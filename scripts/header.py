@@ -1,7 +1,8 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 import argparse
 import crc32
 import re
+import struct
 
 COMMAND_EXTRACT = "extract"
 COMMAND_MODIFY = "modify"
@@ -26,7 +27,7 @@ def extract(path):
 def parse(raw_header):
     # strip crc32
     raw_header = raw_header[crc32.CRC32_LEN:].split(b'\x00')
-    header = dict((x.decode().split("=") for x in raw_header))
+    header = dict((x.decode().split("=", 1) for x in raw_header))
     return header
 
 
@@ -75,7 +76,7 @@ def modify_command(src, dst, country=None, test=False):
     if not test:
         if country:
             header['CountryCode'] = country
-        for flag in ['telnet_en', 'ssh_en', 'uart_en']:
+        for flag in ['ssh_en', 'uart_en']:
             header[flag] = 1
         header['boot_wait'] = "on"
 
@@ -101,7 +102,7 @@ def modify_command(src, dst, country=None, test=False):
 
     # calculate new crc32 and update the data with it
     # TODO: replace with 'str.removeprefix' which was added in 3.9
-    new_raw_crc32 = bytes.fromhex(crc32.calculate(data_without_crc32)[len("0x"):])
+    new_raw_crc32 = bytes.fromhex(crc32.calculate(data_without_crc32)[len("0x"):])[::-1]
     new_crc32_data = new_raw_crc32 + data_without_crc32[crc32.CRC32_LEN:]
 
     with open(src, "rb") as f:
